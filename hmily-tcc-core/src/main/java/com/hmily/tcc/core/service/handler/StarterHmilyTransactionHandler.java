@@ -59,20 +59,21 @@ public class StarterHmilyTransactionHandler implements HmilyTransactionHandler {
             throws Throwable {
         Object returnValue;
         try {
+            //开启分布式事务
             TccTransaction tccTransaction = hmilyTransactionExecutor.begin(point);
             try {
-                //execute try
+                //发起调用 执行try方法
                 returnValue = point.proceed();
                 tccTransaction.setStatus(TccActionEnum.TRYING.getCode());
                 hmilyTransactionExecutor.updateStatus(tccTransaction);
             } catch (Throwable throwable) {
-                //if exception ,execute cancel
+                //异常执行cancel
                 final TccTransaction currentTransaction = hmilyTransactionExecutor.getCurrentTransaction();
                 executor.execute(() -> hmilyTransactionExecutor
                         .cancel(currentTransaction));
                 throw throwable;
             }
-            //execute confirm
+            //try成功执行confirm confirm 失败的话，那就只能走本地补偿
             final TccTransaction currentTransaction = hmilyTransactionExecutor.getCurrentTransaction();
             executor.execute(() -> hmilyTransactionExecutor.confirm(currentTransaction));
         } finally {
